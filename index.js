@@ -1,56 +1,54 @@
 let map;
-let indoorRenderer;
-let indoorNavigation;
-let indoorService;
-let venue;
 
 function initMap() {
-  venue = "1";
+  console.log("init map");
 
+  // Create map centered roughly on your indoor venue
   map = new window.woosmap.map.Map(
     document.getElementById("map"),
-    { center: { lat: 43.6066, lng: 3.9218 } }
+    {
+      center: { lat: 43.6066, lng: 3.9218 },
+      zoom: 19
+    }
   );
 
+  // Indoor renderer configuration
   const conf = {
-    venue: venue,
+    defaultFloor: 3,        // same level you used in routing
+    venue: "1",             // ✅ MATCH your implementation
     responsive: "desktop"
   };
 
-  indoorRenderer = new window.woosmap.map.IndoorRenderer(conf);
+  const widgetConf = {
+    units: "metric"
+  };
+
+  const indoorRenderer = new window.woosmap.map.IndoorWidget(
+    widgetConf,
+    conf
+  );
+
   indoorRenderer.setMap(map);
 
-  indoorRenderer.addListener("indoor_venue_loaded", () => {
-    indoorService = new window.woosmap.map.IndoorService();
-
-    const request = {
-      venueId: "1",
-      origin: new window.woosmap.map.LatLng(43.60659127, 3.92172824),
-      originLevel: 3,
-      destination: new window.woosmap.map.LatLng(43.60651833, 3.92188677),
-      destinationLevel: 3,
-      units: "metric",
-      originId: null,
-      destinationId: null
-    };
-
-    indoorService.directions(request, (response) => {
-      if (response) {
-        indoorRenderer.setDirections(response);
-        indoorNavigation = new window.woosmap.map.NavigationWidget(
-          indoorRenderer,
-          exitNavigation
-        );
-        indoorNavigation.setMap(map);
-        hideLoader();
-      }
-    });
+  // Triggered when user taps a POI
+  indoorRenderer.addListener("indoor_feature_selected", (feature) => {
+    console.log("Feature selected:", feature);
   });
-}
 
-function exitNavigation() {
-  indoorNavigation.setMap(null);
-  indoorRenderer.setDirections(null);
+  // Triggered when indoor venue finishes loading
+  indoorRenderer.addListener("indoor_venue_loaded", (venue) => {
+    console.log("Venue loaded:", venue);
+
+    // Fit map to YOUR venue area (based on your routing points)
+    map.fitBounds(
+      new window.woosmap.map.LatLngBounds(
+        { lat: 43.60650, lng: 3.92170 }, // southwest
+        { lat: 43.60665, lng: 3.92195 }  // northeast
+      )
+    );
+
+    hideLoader();
+  });
 }
 
 function hideLoader() {
