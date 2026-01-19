@@ -7,15 +7,15 @@ function initMap() {
   map = new window.woosmap.map.Map(
     document.getElementById("map"),
     {
-      center: { lat: 43.6066, lng: 3.9218 },
+      center: { lat: 1.3395609, lng: 103.7057931 },
       zoom: 19
     }
   );
 
   // Indoor renderer configuration
   const conf = {
-    defaultFloor: 3,        // same level you used in routing
-    venue: "1",             // ✅ MATCH your implementation
+    defaultFloor: 1,        // same level you used in routing
+    venue: "120",             // ✅ MATCH your implementation
     responsive: "desktop"
   };
 
@@ -42,8 +42,8 @@ function initMap() {
     // Fit map to YOUR venue area (based on your routing points)
     map.fitBounds(
       new window.woosmap.map.LatLngBounds(
-        { lat: 43.60650, lng: 3.92170 }, // southwest
-        { lat: 43.60665, lng: 3.92195 }  // northeast
+        { lat: 1.3384293, lng: 103.7041998 }, // SOUTH-WEST
+        { lat: 1.3406925, lng: 103.7073863 }  // NORTH-EAST
       )
     );
 
