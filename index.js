@@ -45,13 +45,21 @@ window.updateUserLocation = function(lat, lng, level, bearing = 0, forceFocus = 
     return false;
   }
 
-  const inside = indoorRenderer.isUserInsideVenue(lat, lng);
+  const renderer = indoorRenderer.getRenderer ? indoorRenderer.getRenderer() : null;
+  if (!renderer) {
+    console.warn("Renderer not ready yet");
+    return false;
+  }
+
   console.log("updateUserLocation:", { lat, lng, level, inside });
 
-  indoorRenderer.setUserLocation(lat, lng, level, bearing, forceFocus, false);
-  console.log("getUserLocation:", indoorRenderer.getUserLocation());
+  // ✅ setUserLocation exists on IndoorWidget too, so this is fine:
+  indoorRenderer.setUserLocation(lat, lng, level, bearing, forceFocus);
+
+  console.log("getUserLocation:", renderer.getUserLocation());
   return true;
 };
+
 
 function hideLoader() {
   const loader = document.querySelector(".progress");
