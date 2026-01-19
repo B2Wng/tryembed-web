@@ -1,9 +1,10 @@
 let map;
+let indoorRenderer;
 
 function initMap() {
   console.log("init map");
 
-  // Create map centered roughly on your indoor venue
+  // Create map centered roughly on  indoor venue
   map = new window.woosmap.map.Map(
     document.getElementById("map"),
     {
@@ -14,8 +15,8 @@ function initMap() {
 
   // Indoor renderer configuration
   const conf = {
-    defaultFloor: 1,        // same level you used in routing
-    venue: "120",             // ✅ MATCH your implementation
+    defaultFloor: 1,
+    venue: "120",
     responsive: "desktop"
   };
 
@@ -39,7 +40,7 @@ function initMap() {
   indoorRenderer.addListener("indoor_venue_loaded", (venue) => {
     console.log("Venue loaded:", venue);
 
-    // Fit map to YOUR venue area (based on your routing points)
+    // Fit map to  venue area (based on routing points)
     map.fitBounds(
       new window.woosmap.map.LatLngBounds(
         { lat: 1.3384293, lng: 103.7041998 }, // SOUTH-WEST
@@ -50,6 +51,26 @@ function initMap() {
     hideLoader();
   });
 }
+
+/**
+ * Android will call this to update simulated user location
+ */
+window.updateUserLocation = function(lat, lng, level, bearing = 0, forceFocus = true) {
+  if (!indoorRenderer) {
+    console.warn("indoorRenderer not ready yet");
+    return;
+  }
+
+  // optional check
+  const inside = indoorRenderer.isUserInsideVenue(lat, lng);
+  console.log("updateUserLocation:", { lat, lng, level, inside });
+
+  indoorRenderer.setUserLocation(lat, lng, level, bearing, forceFocus, false);
+
+  // You can also read it back:
+  console.log("getUserLocation:", indoorRenderer.getUserLocation());
+};
+
 
 function hideLoader() {
   const loader = document.querySelector(".progress");
