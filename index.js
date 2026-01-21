@@ -49,6 +49,11 @@ function initMap() {
 
     hideLoader();
   });
+
+  indoorRenderer.addListener("indoor_highlight_step", (step) => {
+    console.log("STEP END LOCATION:", step.end_location);
+  });
+
 }
 
 
