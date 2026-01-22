@@ -4,6 +4,8 @@ let indoorService;         // <-- for routing
 let currentDirections = null;
 let steps = [];
 let stepIndex = 0;
+let renderer = null;
+let validLevels = new Set();
 
 function initMap() {
   console.log("init map");
@@ -26,17 +28,8 @@ function initMap() {
   });
 
   indoorRenderer.addListener("indoor_venue_loaded", (venue) => {
-    console.log("Venue loaded:", venue);
-
-    map.fitBounds(new window.woosmap.map.LatLngBounds(
-      { lat: 1.3384293, lng: 103.7041998 },
-      { lat: 1.3406925, lng: 103.7073863 }
-    ));
-
-    hideLoader();
-
-    // OPTIONAL: auto create a test route when venue is ready
-    // window.makeRouteTest();
+    renderer = indoorRenderer.getRenderer();
+    validLevels = new Set((venue.levels || []).map(l => l.level)); // venue carries levels :contentReference[oaicite:2]{index=2}
   });
 
   indoorRenderer.addListener("indoor_highlight_step", (step) => {
@@ -49,8 +42,16 @@ function initMap() {
 
 // 1) Move blue dot
 window.updateUserLocation = function(lat, lng, level, bearing = 0, focus = false) {
-  if (!indoorRenderer) return "not_ready";
-  indoorRenderer.getRenderer().setUserLocation(lat, lng, level, bearing, focus);
+  if (!renderer) return "not_ready";
+
+  if (!validLevels.has(level)) return "invalid_level";
+
+  // If isUserInsideVenue exists in your version, use it; otherwise rely on warning
+  if (typeof renderer.isUserInsideVenue === "function" && !renderer.isUserInsideVenue(lat, lng)) {
+    return "outside_venue";
+  }
+
+  renderer.setUserLocation(lat, lng, level, bearing, focus);
   return "ok";
 };
 
@@ -61,21 +62,20 @@ window.makeRouteTest = function() {
   const req = {
     venueId: "120",
     units: "metric",
-    origin: { lat: 1.33990, lng: 103.70650 },
+    origin: new window.woosmap.map.LatLng(1.33990, 103.70650),
     originLevel: 1,
-    destination: { lat: 1.34010, lng: 103.70690 },
+    destination: new window.woosmap.map.LatLng(1.34010, 103.70690),
     destinationLevel: 1
   };
 
   indoorService.directions(req, (directions) => {
     console.log("DIRECTIONS:", directions);
-    currentDirections = directions;
+
     steps = directions.routes?.[0]?.legs?.[0]?.steps || [];
     stepIndex = 0;
 
-    indoorRenderer.setDirections(directions);
+    indoorRenderer.setDirections(directions); // ok for widget usage :contentReference[oaicite:3]{index=3}
 
-    // highlight first step if exists
     if (steps.length) {
       indoorRenderer.getRenderer().highlightStep(steps[0], true, false, false);
       console.log("STEP 0 END:", steps[0].end_location);
@@ -90,11 +90,14 @@ window.nextStep = function() {
   if (!steps.length) return "no_steps";
 
   stepIndex = Math.min(stepIndex + 1, steps.length - 1);
-  indoorRenderer.getRenderer().highlightStep(steps[stepIndex], true, false, false);
+  const s = steps[stepIndex];
 
-  console.log("NOW STEP:", stepIndex, "END:", steps[stepIndex].end_location);
+  indoorRenderer.getRenderer().highlightStep(s, true, false, false);
+  console.log("NOW STEP:", stepIndex, "END:", s.end_location);
+
   return `ok_${stepIndex}`;
 };
+
 
 function hideLoader() {
   const loader = document.querySelector(".progress");
