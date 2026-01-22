@@ -1,15 +1,13 @@
 let map;
-let indoorRenderer;        // <-- make global
-let indoorService;         // <-- for routing
-let currentDirections = null;
+let indoorRenderer;
+let indoorService;
+let venueReady = false;
+let routeReady = false;
+
 let steps = [];
 let stepIndex = 0;
-let renderer = null;
-let validLevels = new Set();
 
 function initMap() {
-  console.log("init map");
-
   map = new window.woosmap.map.Map(document.getElementById("map"), {
     center: { lat: 1.3395609, lng: 103.7057931 },
     zoom: 19
@@ -23,40 +21,16 @@ function initMap() {
 
   indoorService = new window.woosmap.map.IndoorService();
 
-  indoorRenderer.addListener("indoor_feature_selected", (feature) => {
-    console.log("Feature selected:", feature);
-  });
-
   indoorRenderer.addListener("indoor_venue_loaded", (venue) => {
-    renderer = indoorRenderer.getRenderer();
-    validLevels = new Set((venue.levels || []).map(l => l.level)); // venue carries levels :contentReference[oaicite:2]{index=2}
-  });
-
-  indoorRenderer.addListener("indoor_highlight_step", (step) => {
-    console.log("HIGHLIGHT STEP:", step);
-    console.log("STEP END LOCATION:", step?.end_location);
+    console.log("Venue loaded:", venue);
+    venueReady = true;
+    hideLoader();
   });
 }
 
-// ====== CONTROL FUNCTIONS Android can call ======
-
-// 1) Move blue dot
-window.updateUserLocation = function(lat, lng, level, bearing = 0, focus = false) {
-  if (!renderer) return "not_ready";
-
-  if (!validLevels.has(level)) return "invalid_level";
-
-  // If isUserInsideVenue exists in your version, use it; otherwise rely on warning
-  if (typeof renderer.isUserInsideVenue === "function" && !renderer.isUserInsideVenue(lat, lng)) {
-    return "outside_venue";
-  }
-
-  renderer.setUserLocation(lat, lng, level, bearing, focus);
-  return "ok";
-};
-
-// 2) Create route (so steps exist)
+// call from Android only after venueReady
 window.makeRouteTest = function() {
+  if (!venueReady) return "venue_not_ready";
   if (!indoorService) return "not_ready";
 
   const req = {
@@ -74,34 +48,32 @@ window.makeRouteTest = function() {
     steps = directions.routes?.[0]?.legs?.[0]?.steps || [];
     stepIndex = 0;
 
-    indoorRenderer.setDirections(directions); // ok for widget usage :contentReference[oaicite:3]{index=3}
+    indoorRenderer.setDirections(directions);
 
-    if (steps.length) {
-      indoorRenderer.getRenderer().highlightStep(steps[0], true, false, false);
-      console.log("STEP 0 END:", steps[0].end_location);
-    }
+    routeReady = steps.length > 0;
+    console.log("routeReady:", routeReady, "steps:", steps.length);
   });
 
   return "routing_requested";
 };
 
-// 3) Next step (your timer / beacon triggers this)
+window.updateUserLocation = function(lat, lng, level, bearing = 0, focus = false) {
+  if (!venueReady) return "venue_not_ready";
+  indoorRenderer.getRenderer().setUserLocation(lat, lng, level, bearing, focus);
+  return "ok";
+};
+
 window.nextStep = function() {
-  if (!steps.length) return "no_steps";
+  if (!routeReady) return "no_steps_yet";
 
   stepIndex = Math.min(stepIndex + 1, steps.length - 1);
-  const s = steps[stepIndex];
+  indoorRenderer.getRenderer().highlightStep(steps[stepIndex], true, false, false);
 
-  indoorRenderer.getRenderer().highlightStep(s, true, false, false);
-  console.log("NOW STEP:", stepIndex, "END:", s.end_location);
-
+  console.log("NOW STEP:", stepIndex, "END:", steps[stepIndex].end_location);
   return `ok_${stepIndex}`;
 };
 
-
-function hideLoader() {
-  const loader = document.querySelector(".progress");
-  if (loader) loader.remove();
-}
+window.isVenueReady = () => venueReady;
+window.isRouteReady = () => routeReady;
 
 window.initMap = initMap;
